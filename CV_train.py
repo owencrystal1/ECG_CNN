@@ -98,6 +98,10 @@ def train_ECG_CNN(df_ecg, focused_leads, directory):
 
     y = df_ecg['Diagnosis']
 
+    # X_test = pd.read_csv('./data/II_test_files.csv')
+    # X_train = pd.read_csv('./data/II_train_files.csv')
+    # X_val = pd.read_csv('./data/II_val_files.csv')
+
     def load_data(file_name):
         with open(directory + file_name + '.pickle', 'rb') as f:
             data = pickle.load(f)
@@ -130,6 +134,70 @@ def train_ECG_CNN(df_ecg, focused_leads, directory):
 
     samples = torch.stack(samples)
     
+    
+    # train_samples = []
+    # train_labels = []
+
+    # for index,row in X_train.iterrows():
+    #     sample = load_data(row['File_Name'])
+    #     if sample.shape[1] == 5000:
+
+    #         sample1 = sample[:,:2500]
+    #         train_samples.append(sample1)
+    #         train_labels.append(row['Diagnosis'])
+
+
+    #         sample2 = sample[:,2500:]
+    #         train_samples.append(sample2)
+    #         train_labels.append(row['Diagnosis'])
+    #     else:
+    #         #sample = sample[:,:2500]
+    #         train_samples.append(sample)
+    #         train_labels.append(row['Diagnosis'])
+
+    # train_samples = torch.stack(train_samples)
+
+    # test_samples = []
+    # test_labels = []
+
+    # for index,row in X_test.iterrows():
+    #     sample = load_data(row['File_Name'])
+
+    #     if sample.shape[1] == 5000:
+    #         sample1 = sample[:,:2500]
+    #         test_samples.append(sample1)
+    #         test_labels.append(row['Diagnosis'])
+
+    #         sample2 = sample[:,2500:]
+    #         test_samples.append(sample2)
+    #         test_labels.append(row['Diagnosis'])
+    #     else:
+    #         test_samples.append(sample)
+    #         test_labels.append(row['Diagnosis'])
+
+
+    # test_samples = torch.stack(test_samples)
+
+    # val_samples = []
+    # val_labels = []
+
+    # for index,row in X_val.iterrows():
+    #     sample = load_data(row['File_Name'])
+
+    #     if sample.shape[1] == 5000:
+    #         sample1 = sample[:,:2500]
+    #         val_samples.append(sample1)
+    #         val_labels.append(row['Diagnosis'])
+
+
+    #         sample2 = sample[:,2500:]
+    #         val_samples.append(sample2)
+    #         val_labels.append(row['Diagnosis'])
+    #     else:
+    #         val_samples.append(sample)
+    #         val_labels.append(row['Diagnosis'])
+
+    # val_samples = torch.stack(val_samples)
 
     class ECGDataset(Dataset):
         def __init__(self, samples, labels):
