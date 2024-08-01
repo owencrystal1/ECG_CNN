@@ -132,10 +132,9 @@ def train_ECG_CNN(df_ecg, focused_leads, directory):
     
 
     class ECGDataset(Dataset):
-        def __init__(self, samples, labels, ids):
+        def __init__(self, samples, labels):
             self.samples = samples
             self.labels = labels
-            self.ids = ids  # Store the IDs
 
         def __len__(self):
             return len(self.samples)
@@ -170,9 +169,8 @@ def train_ECG_CNN(df_ecg, focused_leads, directory):
             y = self.labels[idx]
             y = torch.tensor(y)
 
-            sample_id = self.ids[idx]
 
-            return scaled_tensor, y, sample_id
+            return scaled_tensor, y
 
     class ECG_CNN(nn.Module):
         def __init__(self, num_conv_layers=num_conv_layers, in_channels=2, first_layer_filters=first_layer_filters, num_classes=num_classes, kernel_size=kernel_size):
@@ -255,23 +253,22 @@ def train_ECG_CNN(df_ecg, focused_leads, directory):
 
     # Define the number of splits
     device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
+
     kf = KFold(n_splits=5, shuffle=True, random_state=42)
+
     samples = np.array(samples)  # Convert to numpy array
     labels = np.array(labels)
     
 
     # Perform cross-validation
-    phase = 'test'
+    phase = 'train'
+
     for fold, (train_index, val_index) in enumerate(kf.split(samples)):
 
         print(f"Fold {fold+1}")
 
-        pt_ids = np.array(pt_ids)
 
-        train_samples, train_labels, train_ids = samples[train_index], labels[train_index], pt_ids[train_index]
-        val_samples, val_labels, val_ids = samples[val_index], labels[val_index], pt_ids[val_index]
-
-        logger = open(os.path.join('./CV_{}_log.txt'.format(fold)), 'a')
+        logger = open(os.path.join('./CV_{}_log_v2.txt'.format(fold)), 'a')
         print('Training Parameters:', file=logger)
         print('-' * 10, file=logger)
         print(params, file=logger)
@@ -279,11 +276,11 @@ def train_ECG_CNN(df_ecg, focused_leads, directory):
         logger.flush()
 
         # training and validation subsets
-        train_samples, train_labels, train_ids = samples[train_index], labels[train_index], pt_ids[train_index]
-        val_samples, val_labels, val_ids = samples[val_index], labels[val_index], pt_ids[val_index]
+        train_samples, train_labels = samples[train_index], labels[train_index]
+        val_samples, val_labels = samples[val_index], labels[val_index]
 
-        train_dataset = ECGDataset(torch.tensor(train_samples), train_labels, train_ids)
-        val_dataset = ECGDataset(torch.tensor(val_samples), val_labels, val_ids)
+        train_dataset = ECGDataset(torch.tensor(train_samples), train_labels)
+        val_dataset = ECGDataset(torch.tensor(val_samples), val_labels)
 
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
         val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
@@ -422,7 +419,7 @@ def train_ECG_CNN(df_ecg, focused_leads, directory):
                         output_df.HCM = score_1
                         output_df.HTN = score_2
                         df = output_df
-                        print(df.values, file=logger)
+                        df.to_csv(f'model_fold_IDs_{fold+1}_v2.csv')
 
                         classes = ['AMY','HCM','HTN']
                         # Iterate over each class
@@ -464,16 +461,14 @@ def train_ECG_CNN(df_ecg, focused_leads, directory):
             score_0 = []
             score_1 = []
             score_2 = []
-            all_ids = []
 
             # Evaluate on test set (optional)
             model.eval()
 
             with torch.no_grad():
-                for inputs, labels, ids in val_loader:
+                for inputs, labels in val_loader:
                     inputs = inputs.to(device)
                     labels = labels.to(device)
-                    all_ids.extend(ids)
                     outputs = model(inputs)
                     _, predicted = torch.max(outputs.data, 1)
 
@@ -488,16 +483,15 @@ def train_ECG_CNN(df_ecg, focused_leads, directory):
                     score_2.extend(score_2_batch.tolist())
 
 
-            output_df = pd.DataFrame(columns=['label','AMY','HCM','HTN', 'ID'])
+            output_df = pd.DataFrame(columns=['label','AMY','HCM','HTN'])
             output_df.label = true_labels
             output_df.AMY = score_0
             output_df.HCM = score_1
             output_df.HTN = score_2
-            output_df.ID = all_ids
             df = output_df
             df.to_csv(f'model_fold_IDs_{fold+1}.csv')
 
-            df = pd.read_csv('./model_all_folds.csv')
+            #df = pd.read_csv('./model_all_folds.csv')
 
             y_true = df.label
             y_label = label_binarize(y_true.astype(int), classes=[0,1,2])
@@ -517,5 +511,5 @@ def train_ECG_CNN(df_ecg, focused_leads, directory):
             ML_train.get_performance_metrics(y_true.astype(int), np.array(thresh_preds))
 
             # ROCs
-            ML_train.get_metrics(y_true.astype(int), probabilities.values, 3, ['II', 'V1'], f'ECG_CNN_all_folds')
+            ML_train.get_metrics(y_true.astype(int), probabilities.values, 3, focused_leads, f'ECG_CNN_all_folds')
 
